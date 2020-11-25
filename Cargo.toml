@@ -1,0 +1,21 @@
+[package]
+name = "connect-box"
+version = "0.1.0"
+authors = ["G. Endignoux <ggendx@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-trait = "0.1.42"
+clap = "2.33.3"
+env_logger = "0.8.2"
+futures = "0.3.8"
+hyper = "0.13.9"
+log = "0.4.11"
+ncurses = "5.99.0"
+reqwest = { version = "0.10.9", features = ["cookies"] }
+serde = "1.0.117"
+serde_derive = "1.0.117"
+serde-xml-rs = "0.4.0"
+tokio = { version = "0.2.22", features = ["macros", "signal", "time"] }
