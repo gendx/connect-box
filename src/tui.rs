@@ -182,7 +182,7 @@ impl Tui {
         ncurses::attron(ncurses::A_STANDOUT());
         ncurses::wmove(self.window, 0, 0);
         for _ in 0..self.size.x {
-            ncurses::waddch(self.window, ' ' as u32);
+            ncurses::waddch(self.window, ' '.into());
         }
         self.print_header();
         ncurses::attroff(ncurses::A_STANDOUT());
