@@ -3,6 +3,8 @@
 Rust client to interact with the UPC Connect Box router, and monitor connected devices from your terminal.
 This is inspired by [python-connect-box](https://github.com/home-assistant-ecosystem/python-connect-box).
 
+[![asciicast](https://asciinema.org/a/hqD96fUObtAglsnxEjwHNrnYD.svg)](https://asciinema.org/a/hqD96fUObtAglsnxEjwHNrnYD)
+
 This software is not official, developed, supported or endorsed by UPC.
 
 ## Usage
