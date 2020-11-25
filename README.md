@@ -1,4 +1,4 @@
-# connect-box
+# connect-box [![Build Status](https://travis-ci.org/gendx/connect-box.svg?branch=master)](https://travis-ci.org/gendx/connect-box)
 
 Rust client to interact with the UPC Connect Box router, and monitor connected devices from your terminal.
 This is inspired by [python-connect-box](https://github.com/home-assistant-ecosystem/python-connect-box).
