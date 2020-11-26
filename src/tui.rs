@@ -182,7 +182,10 @@ impl Tui {
         ncurses::attron(ncurses::A_STANDOUT());
         ncurses::wmove(self.window, 0, 0);
         for _ in 0..self.size.x {
-            ncurses::waddch(self.window, ' '.into());
+            // Note: There is only a direct char -> u32 conversion, but ncurses::chtype can either
+            // be u32 or u64 depending on the platform, therefore we need an extra .into() at the
+            // moment.
+            ncurses::waddch(self.window, (' ' as u32).into());
         }
         self.print_header();
         ncurses::attroff(ncurses::A_STANDOUT());
