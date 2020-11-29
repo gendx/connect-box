@@ -10,10 +10,10 @@ use demo::DemoRouter;
 use futures::future::FutureExt;
 use futures::select;
 use futures::stream;
-use futures::stream::StreamExt;
 use log::{debug, info};
 use router::Router;
 use std::net::Ipv4Addr;
+use tokio::stream::StreamExt;
 use tokio::{signal, time};
 use tui::Tui;
 use types::LanUserTableDiff;
@@ -99,7 +99,7 @@ async fn diff_loop<R: Router>(
     let temperature = router.temperature().await?;
     println!("Temperature: {:#?}", temperature);
 
-    let mut throttle = time::throttle(refresh_duration, stream::repeat(()));
+    let mut throttle = stream::repeat(()).throttle(refresh_duration);
     loop {
         debug!("Throttling...");
         throttle.next().await;
@@ -122,7 +122,7 @@ async fn tui_loop<R: Router>(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut tui = Tui::new();
 
-    let mut throttle = time::throttle(refresh_duration, stream::repeat(()));
+    let mut throttle = stream::repeat(()).throttle(refresh_duration);
     loop {
         debug!("Throttling...");
         throttle.next().await;

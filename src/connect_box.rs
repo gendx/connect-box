@@ -2,7 +2,7 @@ use crate::router::Router;
 use crate::types::{CmState, LanUserTable};
 use async_trait::async_trait;
 use futures::stream;
-use futures::stream::{Stream, StreamExt};
+use futures::stream::Stream;
 use log::{debug, trace, warn};
 use reqwest::{Client, Response};
 use std::error::Error;
@@ -10,8 +10,8 @@ use std::future::Future;
 use std::io;
 use std::marker::Unpin;
 use std::net::Ipv4Addr;
+use tokio::stream::StreamExt;
 use tokio::time;
-use tokio::time::Throttle;
 
 pub struct ConnectBox<'a> {
     client: Client,
@@ -140,7 +140,7 @@ impl<'a> ConnectBox<'a> {
 
     async fn get(&mut self, function: usize) -> Result<String, Box<dyn std::error::Error>> {
         // TODO: Make retry_on_connect_error work for this case.
-        let mut throttle = time::throttle(self.throttle_duration, stream::repeat(()));
+        let mut throttle = stream::repeat(()).throttle(self.throttle_duration);
         loop {
             let res = self.get_impl(function).await;
             if let Err(ref e) = res {
@@ -184,7 +184,7 @@ impl<'a> ConnectBox<'a> {
         params: Vec<(&str, &str)>,
     ) -> Result<String, Box<dyn std::error::Error>> {
         // TODO: Make retry_on_connect_error work for this case.
-        let mut throttle = time::throttle(self.throttle_duration, stream::repeat(()));
+        let mut throttle = stream::repeat(()).throttle(self.throttle_duration);
         loop {
             let res = self.set_impl(function, params.clone()).await;
             if let Err(ref e) = res {
@@ -255,7 +255,7 @@ impl<'a> ConnectBox<'a> {
     where
         for<'b> F: AsyncFnMut1<&'b mut Self, Output = Result<T, Box<dyn std::error::Error>>>,
     {
-        let mut throttle = time::throttle(self.throttle_duration, stream::repeat(()));
+        let mut throttle = stream::repeat(()).throttle(self.throttle_duration);
         loop {
             let res = f(self).await;
             if let Err(ref e) = res {
@@ -270,7 +270,7 @@ impl<'a> ConnectBox<'a> {
     // TODO: don't retry indefinitely after interrupt.
     async fn should_retry(
         error: &Box<dyn std::error::Error>,
-        throttle: &mut Throttle<impl Stream + Unpin>,
+        throttle: &mut (impl Stream + Unpin),
         throttle_duration: time::Duration,
     ) -> bool {
         if error
