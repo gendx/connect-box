@@ -6,6 +6,7 @@ use futures::stream::{Stream, StreamExt};
 use log::{debug, trace, warn};
 use reqwest::{Client, Response};
 use std::error::Error;
+use std::future::Future;
 use std::io;
 use std::marker::Unpin;
 use std::net::Ipv4Addr;
@@ -40,6 +41,22 @@ impl<'a> Router for ConnectBox<'a> {
         let result = serde_xml_rs::from_str(&xml)?;
         Ok(result)
     }
+}
+
+// Helper trait for implementing a generic retry loop. See:
+// https://users.rust-lang.org/t/how-to-write-a-helper-function-to-retry-a-future-in-a-loop/51981
+trait AsyncFnMut1<Arg>: FnMut(Arg) -> <Self as AsyncFnMut1<Arg>>::Fut {
+    type Fut: Future<Output = <Self as AsyncFnMut1<Arg>>::Output>;
+    type Output;
+}
+
+impl<Arg, F, Fut> AsyncFnMut1<Arg> for F
+where
+    F: FnMut(Arg) -> Fut,
+    Fut: Future,
+{
+    type Fut = Fut;
+    type Output = Fut::Output;
 }
 
 impl<'a> ConnectBox<'a> {
@@ -82,17 +99,8 @@ impl<'a> ConnectBox<'a> {
 
     async fn index(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         debug!("Fetching index page...");
-        let mut throttle = time::throttle(self.throttle_duration, stream::repeat(()));
-        loop {
-            let res = self.index_impl().await;
-            if let Err(ref e) = res {
-                if ConnectBox::should_retry(e, &mut throttle, self.throttle_duration).await {
-                    continue;
-                }
-            }
-
-            return res;
-        }
+        self.retry_on_connect_error(ConnectBox::index_impl, self.throttle_duration)
+            .await
     }
 
     async fn index_impl(&mut self) -> Result<(), Box<dyn std::error::Error>> {
@@ -131,6 +139,7 @@ impl<'a> ConnectBox<'a> {
     }
 
     async fn get(&mut self, function: usize) -> Result<String, Box<dyn std::error::Error>> {
+        // TODO: Make retry_on_connect_error work for this case.
         let mut throttle = time::throttle(self.throttle_duration, stream::repeat(()));
         loop {
             let res = self.get_impl(function).await;
@@ -174,6 +183,7 @@ impl<'a> ConnectBox<'a> {
         function: usize,
         params: Vec<(&str, &str)>,
     ) -> Result<String, Box<dyn std::error::Error>> {
+        // TODO: Make retry_on_connect_error work for this case.
         let mut throttle = time::throttle(self.throttle_duration, stream::repeat(()));
         loop {
             let res = self.set_impl(function, params.clone()).await;
@@ -235,6 +245,26 @@ impl<'a> ConnectBox<'a> {
 
         self.token = token;
         Ok(())
+    }
+
+    async fn retry_on_connect_error<T, F>(
+        &mut self,
+        mut f: F,
+        throttle_duration: time::Duration,
+    ) -> Result<T, Box<dyn std::error::Error>>
+    where
+        for<'b> F: AsyncFnMut1<&'b mut Self, Output = Result<T, Box<dyn std::error::Error>>>,
+    {
+        let mut throttle = time::throttle(self.throttle_duration, stream::repeat(()));
+        loop {
+            let res = f(self).await;
+            if let Err(ref e) = res {
+                if ConnectBox::should_retry(e, &mut throttle, throttle_duration).await {
+                    continue;
+                }
+            }
+            return res;
+        }
     }
 
     // TODO: don't retry indefinitely after interrupt.
